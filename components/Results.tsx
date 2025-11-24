@@ -1,11 +1,12 @@
+
 import React, { useState, useMemo } from 'react';
-import { StoredAnswer, AnswerValue } from '../types';
+import { StoredAnswer, AnswerValue, HistoryEntry, UserProfile } from '../types';
 import { QUESTIONS } from '../constants';
 import { 
   Brain, Eye, Ear, Wind, MessageCircle, Smile, 
   Sparkles, Heart, Zap, Utensils, Dumbbell, 
   Activity, Shield, Flame, User, Send,
-  AlertTriangle, CheckCircle, Info, Phone, Calendar
+  CheckCircle, Info, Calendar, History
 } from 'lucide-react';
 import { 
   AreaChart, Area, XAxis, YAxis, CartesianGrid, 
@@ -14,6 +15,8 @@ import {
 
 interface ResultsProps {
   answers: StoredAnswer[];
+  history: HistoryEntry[];
+  userProfile: UserProfile;
 }
 
 // Geometry helpers for SVG generation
@@ -62,14 +65,13 @@ const CATEGORY_ICONS: Record<string, React.ElementType> = {
   'Metabolismo': Flame,
 };
 
-const Results: React.FC<ResultsProps> = ({ answers }) => {
+const Results: React.FC<ResultsProps> = ({ answers, history, userProfile }) => {
   const [hoveredCategory, setHoveredCategory] = useState<string | null>(null);
-  const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [formVisible, setFormVisible] = useState(false);
   const [submitted, setSubmitted] = useState(false);
 
-  // --- Data Processing ---
+  // --- Current Session Data Processing ---
   const { categoryData, totalStats } = useMemo(() => {
     const cats: Record<string, { 
       label: string, 
@@ -94,7 +96,7 @@ const Results: React.FC<ResultsProps> = ({ answers }) => {
         const cat = cats[originalQ.category];
         if (cat) {
           cat.score += ans.score;
-          cat.maxScore += 3; // Max score per question is 3 (Frequentemente)
+          cat.maxScore += 3; // Max score per question is 3
           cat.questions.push(ans);
           grandTotal += ans.score;
           maxGrandTotal += 3;
@@ -130,7 +132,20 @@ const Results: React.FC<ResultsProps> = ({ answers }) => {
     }));
   }, [categoryData]);
 
-  // Chart Rendering Helpers
+  // --- Evolution Data Processing ---
+  const evolutionData = useMemo(() => {
+    return history.map(entry => {
+      const date = new Date(entry.date);
+      const month = date.toLocaleString('pt-BR', { month: 'short' }).replace('.', '');
+      return {
+        dateLabel: `${month}/${date.getFullYear().toString().slice(2)}`,
+        fullDate: date.toLocaleDateString('pt-BR'),
+        score: entry.percentage
+      };
+    });
+  }, [history]);
+
+  // Chart Rendering Helpers (Moved inside render to access scope if needed, but keeping outside is fine)
   const renderWheel = () => {
     const cx = 250;
     const cy = 250;
@@ -219,7 +234,7 @@ const Results: React.FC<ResultsProps> = ({ answers }) => {
           );
         })}
         
-        {/* Center Score or User Icon */}
+        {/* Center Score */}
         <foreignObject x={cx - 30} y={cy - 30} width="60" height="60" className="pointer-events-none transform rotate-90">
            <div className="w-full h-full rounded-full flex items-center justify-center bg-slate-900 border-2 border-slate-700 shadow-xl">
              <span className={`text-xl font-bold ${totalStats.percentage > 50 ? 'text-red-500' : 'text-emerald-500'}`}>
@@ -261,14 +276,18 @@ const Results: React.FC<ResultsProps> = ({ answers }) => {
     <div className="min-h-screen bg-slate-950 text-slate-200 font-sans selection:bg-emerald-500/30 p-4 md:p-8 animate-fade-in">
       
       {/* Header Info */}
-      <header className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4 px-2">
+      <header className="flex flex-col md:flex-row justify-between items-start md:items-end mb-8 gap-4 px-2 border-b border-white/5 pb-6">
         <div>
-          <h1 className="text-3xl font-bold text-white tracking-tight">Mapeamento de Sintomas</h1>
-          <p className="text-slate-500 text-sm mt-1 flex items-center gap-2">
-            <Calendar size={14} /> {new Date().toLocaleDateString('pt-BR')} 
-            <span className="w-1 h-1 bg-slate-700 rounded-full"/>
-            Oásis Centro de Treinamento
-          </p>
+          <h1 className="text-3xl font-bold text-white tracking-tight">{userProfile.name}</h1>
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 mt-2 text-slate-400 text-sm">
+             <span className="flex items-center gap-1.5"><Calendar size={14} className="text-emerald-500"/> Nascimento: {new Date(userProfile.birthDate).toLocaleDateString('pt-BR')}</span>
+             <span className="hidden sm:inline w-1 h-1 bg-slate-700 rounded-full"/>
+             <span className="capitalize text-slate-300">{userProfile.gender}</span>
+             <span className="hidden sm:inline w-1 h-1 bg-slate-700 rounded-full"/>
+             <span className="flex items-center gap-1.5"><History size={14} className="text-blue-500"/> Avaliações: {history.length}</span>
+             <span className="hidden sm:inline w-1 h-1 bg-slate-700 rounded-full"/>
+             <span className="text-slate-500">{userProfile.email}</span>
+          </div>
         </div>
         <div className="flex gap-4">
            {!formVisible && (
@@ -276,7 +295,7 @@ const Results: React.FC<ResultsProps> = ({ answers }) => {
                onClick={() => setFormVisible(true)}
                className="bg-emerald-600 hover:bg-emerald-500 text-white px-6 py-2 rounded-full font-medium transition-all shadow-lg shadow-emerald-900/20 flex items-center gap-2"
              >
-               <Send size={16} /> Receber Análise
+               <Send size={16} /> Contatar Especialista
              </button>
            )}
         </div>
@@ -305,7 +324,7 @@ const Results: React.FC<ResultsProps> = ({ answers }) => {
           <div className="glass-panel rounded-3xl p-8 border border-white/5 bg-slate-900/50 relative overflow-hidden">
             <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
             
-            <h3 className="text-slate-400 text-sm font-medium uppercase tracking-wider mb-6">Índice Geral de Sintomas</h3>
+            <h3 className="text-slate-400 text-sm font-medium uppercase tracking-wider mb-6">Índice Atual de Sintomas</h3>
             
             <div className="relative flex items-center justify-center py-4">
               {/* Semi Circle Gauge SVG */}
@@ -374,16 +393,15 @@ const Results: React.FC<ResultsProps> = ({ answers }) => {
               </div>
             ) : formVisible ? (
               <div className="animate-slide-up h-full flex flex-col justify-center">
-                 <h3 className="text-xl font-bold text-white mb-2">Finalizar Avaliação</h3>
-                 <p className="text-sm text-slate-400 mb-6">Preencha para receber o relatório completo.</p>
+                 <h3 className="text-xl font-bold text-white mb-2">Enviar Relatório</h3>
+                 <p className="text-sm text-slate-400 mb-6">Confirme seus dados para envio.</p>
                  <form onSubmit={handleSubmit} className="space-y-4">
                     <input 
                       type="text" 
                       placeholder="Nome completo" 
-                      required
-                      value={name}
-                      onChange={e => setName(e.target.value)}
-                      className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-emerald-500 transition-colors"
+                      readOnly
+                      value={userProfile.name}
+                      className="w-full bg-slate-800/50 border border-slate-700 rounded-xl px-4 py-3 text-slate-400 cursor-not-allowed"
                     />
                     <input 
                       type="tel" 
@@ -404,22 +422,15 @@ const Results: React.FC<ResultsProps> = ({ answers }) => {
                  </form>
               </div>
             ) : (
-              // Evolution Chart Placeholder (Visible when not hovering)
-              <div className="h-full flex flex-col">
+              // Evolution Chart - Real History
+              <div className="h-full flex flex-col relative">
                  <h3 className="text-slate-400 text-sm font-medium uppercase tracking-wider mb-4 flex justify-between items-center">
                    Evolução dos Sintomas
-                   <span className="text-xs normal-case bg-white/5 px-2 py-1 rounded text-slate-500">Simulação</span>
                  </h3>
+                 
                  <div className="flex-1 min-h-[200px]">
                    <ResponsiveContainer width="100%" height="100%">
-                     <AreaChart data={[
-                       { month: 'Jan', score: 30 },
-                       { month: 'Mar', score: 45 },
-                       { month: 'Mai', score: 35 },
-                       { month: 'Jul', score: 50 },
-                       { month: 'Set', score: 40 },
-                       { month: 'Nov', score: totalStats.percentage } // Current
-                     ]}>
+                     <AreaChart data={evolutionData}>
                        <defs>
                          <linearGradient id="colorScore" x1="0" y1="0" x2="0" y2="1">
                            <stop offset="5%" stopColor="#10b981" stopOpacity={0.3}/>
@@ -427,21 +438,47 @@ const Results: React.FC<ResultsProps> = ({ answers }) => {
                          </linearGradient>
                        </defs>
                        <CartesianGrid strokeDasharray="3 3" stroke="#334155" vertical={false} />
-                       <XAxis dataKey="month" stroke="#64748b" fontSize={12} tickLine={false} axisLine={false} />
+                       <XAxis 
+                         dataKey="dateLabel" 
+                         stroke="#64748b" 
+                         fontSize={12} 
+                         tickLine={false} 
+                         axisLine={false}
+                         padding={{ left: 10, right: 10 }}
+                       />
                        <YAxis stroke="#64748b" fontSize={12} tickLine={false} axisLine={false} domain={[0, 100]} />
                        <RechartsTooltip 
                          contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', borderRadius: '8px' }}
                          itemStyle={{ color: '#fff' }}
+                         labelStyle={{ color: '#94a3b8', marginBottom: '4px' }}
+                         cursor={{ stroke: '#334155', strokeWidth: 1 }}
+                         formatter={(value: any) => [`${value}%`, 'Pontuação']}
+                         labelFormatter={(label, payload) => {
+                           if (payload && payload.length > 0) {
+                              return payload[0].payload.fullDate;
+                           }
+                           return label;
+                         }}
                        />
-                       <Area type="monotone" dataKey="score" stroke="#10b981" fillOpacity={1} fill="url(#colorScore)" strokeWidth={3} />
-                       {/* Threshold Lines */}
-                       <ReferenceLine y={70} stroke="#ef4444" strokeDasharray="3 3" strokeOpacity={0.5} label={{ value: 'Alerta', fill: '#ef4444', fontSize: 10 }} />
+                       <Area 
+                         type="monotone" 
+                         dataKey="score" 
+                         stroke="#10b981" 
+                         fillOpacity={1} 
+                         fill="url(#colorScore)" 
+                         strokeWidth={3}
+                         isAnimationActive={true}
+                         dot={{ r: 4, fill: "#10b981", strokeWidth: 2, stroke: "#fff" }}
+                         activeDot={{ r: 6, stroke: "#fff", strokeWidth: 2 }}
+                       />
+                       <ReferenceLine y={70} stroke="#ef4444" strokeDasharray="3 3" strokeOpacity={0.5} label={{ value: 'Alerta', fill: '#ef4444', fontSize: 10, position: 'insideBottomRight' }} />
                      </AreaChart>
                    </ResponsiveContainer>
                  </div>
+                 
                  <div className="mt-4 flex items-start gap-2 text-xs text-slate-500 bg-blue-500/5 p-3 rounded-lg border border-blue-500/10">
                    <Info size={14} className="text-blue-400 mt-0.5 shrink-0" />
-                   <p>Passe o mouse sobre as fatias do gráfico à esquerda para ver os detalhes específicos de cada área do corpo.</p>
+                   <p>Este gráfico mostra o histórico das suas avaliações baseado no seu e-mail.</p>
                  </div>
               </div>
             )}
