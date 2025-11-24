@@ -68,7 +68,7 @@ const Assessment: React.FC<AssessmentProps> = ({ onComplete }) => {
                   flex flex-col items-center justify-center gap-2
                   ${option.value === AnswerValue.FREQUENTEMENTE ? 'hover:border-red-400/30' : ''}
                   ${option.value === AnswerValue.OCASIONALMENTE ? 'hover:border-blue-400/30' : ''}
-                  ${option.value === AnswerValue.NAO ? 'hover:border-green-400/30' : ''}
+                  ${option.value === AnswerValue.NAO ? 'hover:border-yellow-400/30' : ''}
                   glass-panel bg-opacity-30 hover:bg-opacity-50
                 `}
               >
@@ -76,7 +76,7 @@ const Assessment: React.FC<AssessmentProps> = ({ onComplete }) => {
                   w-3 h-3 rounded-full mb-1 transition-colors
                   ${option.value === AnswerValue.FREQUENTEMENTE ? 'bg-red-500 group-hover:shadow-[0_0_10px_rgba(239,68,68,0.5)]' : ''}
                   ${option.value === AnswerValue.OCASIONALMENTE ? 'bg-blue-500 group-hover:shadow-[0_0_10px_rgba(59,130,246,0.5)]' : ''}
-                  ${option.value === AnswerValue.NAO ? 'bg-green-500 group-hover:shadow-[0_0_10px_rgba(34,197,94,0.5)]' : ''}
+                  ${option.value === AnswerValue.NAO ? 'bg-brand group-hover:shadow-[0_0_10px_rgba(234,179,8,0.5)]' : ''}
                 `} />
                 <span className="text-slate-200 font-medium group-hover:text-white">{option.label}</span>
               </button>

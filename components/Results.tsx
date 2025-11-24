@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo } from 'react';
 import { StoredAnswer, AnswerValue, HistoryEntry, UserProfile } from '../types';
 import { QUESTIONS } from '../constants';
@@ -178,7 +177,12 @@ const Results: React.FC<ResultsProps> = ({ answers, history, userProfile }) => {
           const barHeight = (radius - innerHole - 40) / levels; // Leave room for icon
           
           // Determine color based on severity
-          let baseColor = "#22c55e"; // Green
+          let baseColor = "#22c55e"; // Green for low (standard)
+          // Since the user asked for gold theme, we could use gold for low, but chart semantics usually follow green=good.
+          // However, to match the "No Answer" = Gold, maybe we should use Gold for low?
+          // Let's stick to standard traffic light for chart data integrity unless requested, 
+          // BUT use the requested Gold theme for the "Good" score text.
+          
           if (item.percentage > 30) baseColor = "#eab308"; // Yellow
           if (item.percentage > 60) baseColor = "#ef4444"; // Red
           
@@ -237,7 +241,7 @@ const Results: React.FC<ResultsProps> = ({ answers, history, userProfile }) => {
         {/* Center Score */}
         <foreignObject x={cx - 30} y={cy - 30} width="60" height="60" className="pointer-events-none transform rotate-90">
            <div className="w-full h-full rounded-full flex items-center justify-center bg-slate-900 border-2 border-slate-700 shadow-xl">
-             <span className={`text-xl font-bold ${totalStats.percentage > 50 ? 'text-red-500' : 'text-emerald-500'}`}>
+             <span className={`text-xl font-bold ${totalStats.percentage > 50 ? 'text-red-500' : 'text-yellow-500'}`}>
                {totalStats.percentage}%
              </span>
            </div>
@@ -256,9 +260,9 @@ const Results: React.FC<ResultsProps> = ({ answers, history, userProfile }) => {
   if (submitted) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-950 p-6">
-        <div className="glass-panel max-w-md w-full p-8 rounded-3xl text-center border border-emerald-500/30 shadow-[0_0_50px_rgba(16,185,129,0.2)] animate-fade-in">
-          <div className="w-20 h-20 bg-emerald-500/10 rounded-full flex items-center justify-center mx-auto mb-6">
-            <CheckCircle size={40} className="text-emerald-500" />
+        <div className="glass-panel max-w-md w-full p-8 rounded-3xl text-center border border-yellow-500/30 shadow-[0_0_50px_rgba(234,179,8,0.2)] animate-fade-in">
+          <div className="w-20 h-20 bg-yellow-500/10 rounded-full flex items-center justify-center mx-auto mb-6">
+            <CheckCircle size={40} className="text-yellow-500" />
           </div>
           <h2 className="text-2xl font-bold text-white mb-2">Relatório Enviado!</h2>
           <p className="text-slate-400 mb-8">
@@ -273,14 +277,14 @@ const Results: React.FC<ResultsProps> = ({ answers, history, userProfile }) => {
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-200 font-sans selection:bg-emerald-500/30 p-4 md:p-8 animate-fade-in">
+    <div className="min-h-screen bg-slate-950 text-slate-200 font-sans selection:bg-yellow-500/30 p-4 md:p-8 animate-fade-in">
       
       {/* Header Info */}
       <header className="flex flex-col md:flex-row justify-between items-start md:items-end mb-8 gap-4 px-2 border-b border-white/5 pb-6">
         <div>
           <h1 className="text-3xl font-bold text-white tracking-tight">{userProfile.name}</h1>
           <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 mt-2 text-slate-400 text-sm">
-             <span className="flex items-center gap-1.5"><Calendar size={14} className="text-emerald-500"/> Nascimento: {new Date(userProfile.birthDate).toLocaleDateString('pt-BR')}</span>
+             <span className="flex items-center gap-1.5"><Calendar size={14} className="text-yellow-500"/> Nascimento: {new Date(userProfile.birthDate).toLocaleDateString('pt-BR')}</span>
              <span className="hidden sm:inline w-1 h-1 bg-slate-700 rounded-full"/>
              <span className="capitalize text-slate-300">{userProfile.gender}</span>
              <span className="hidden sm:inline w-1 h-1 bg-slate-700 rounded-full"/>
@@ -293,7 +297,7 @@ const Results: React.FC<ResultsProps> = ({ answers, history, userProfile }) => {
            {!formVisible && (
              <button 
                onClick={() => setFormVisible(true)}
-               className="bg-emerald-600 hover:bg-emerald-500 text-white px-6 py-2 rounded-full font-medium transition-all shadow-lg shadow-emerald-900/20 flex items-center gap-2"
+               className="bg-brand hover:bg-brand-dark text-white px-6 py-2 rounded-full font-medium transition-all shadow-lg shadow-yellow-900/20 flex items-center gap-2"
              >
                <Send size={16} /> Contatar Especialista
              </button>
@@ -322,7 +326,7 @@ const Results: React.FC<ResultsProps> = ({ answers, history, userProfile }) => {
           
           {/* Gauge Section */}
           <div className="glass-panel rounded-3xl p-8 border border-white/5 bg-slate-900/50 relative overflow-hidden">
-            <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
+            <div className="absolute top-0 right-0 w-32 h-32 bg-yellow-500/10 rounded-full blur-3xl pointer-events-none" />
             
             <h3 className="text-slate-400 text-sm font-medium uppercase tracking-wider mb-6">Índice Atual de Sintomas</h3>
             
@@ -359,13 +363,13 @@ const Results: React.FC<ResultsProps> = ({ answers, history, userProfile }) => {
             {hoveredCategory && activeCategoryData ? (
               <div className="animate-fade-in h-full flex flex-col">
                 <div className="flex items-center gap-3 mb-4 pb-4 border-b border-white/5">
-                  <div className={`p-3 rounded-xl ${activeCategoryData.percentage > 50 ? 'bg-red-500/20 text-red-400' : 'bg-emerald-500/20 text-emerald-400'}`}>
+                  <div className={`p-3 rounded-xl ${activeCategoryData.percentage > 50 ? 'bg-red-500/20 text-red-400' : 'bg-yellow-500/20 text-yellow-400'}`}>
                     {React.createElement(CATEGORY_ICONS[hoveredCategory] || Activity, { size: 24 })}
                   </div>
                   <div>
                     <h3 className="text-xl font-bold text-white">{hoveredCategory}</h3>
                     <p className="text-sm text-slate-400">
-                      Intensidade: <span className={activeCategoryData.percentage > 50 ? "text-red-400" : "text-emerald-400"}>{Math.round(activeCategoryData.percentage)}%</span>
+                      Intensidade: <span className={activeCategoryData.percentage > 50 ? "text-red-400" : "text-yellow-400"}>{Math.round(activeCategoryData.percentage)}%</span>
                     </p>
                   </div>
                 </div>
@@ -409,13 +413,13 @@ const Results: React.FC<ResultsProps> = ({ answers, history, userProfile }) => {
                       required
                       value={phone}
                       onChange={e => setPhone(e.target.value)}
-                      className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-emerald-500 transition-colors"
+                      className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-yellow-500 transition-colors"
                     />
                     <div className="flex gap-3 pt-2">
                       <button type="button" onClick={() => setFormVisible(false)} className="flex-1 py-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 transition-colors">
                         Cancelar
                       </button>
-                      <button type="submit" className="flex-1 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold shadow-lg shadow-emerald-900/30 transition-colors">
+                      <button type="submit" className="flex-1 py-3 rounded-xl bg-brand hover:bg-brand-dark text-white font-bold shadow-lg shadow-yellow-900/30 transition-colors">
                         Enviar
                       </button>
                     </div>
@@ -433,8 +437,8 @@ const Results: React.FC<ResultsProps> = ({ answers, history, userProfile }) => {
                      <AreaChart data={evolutionData}>
                        <defs>
                          <linearGradient id="colorScore" x1="0" y1="0" x2="0" y2="1">
-                           <stop offset="5%" stopColor="#10b981" stopOpacity={0.3}/>
-                           <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
+                           <stop offset="5%" stopColor="#eab308" stopOpacity={0.3}/>
+                           <stop offset="95%" stopColor="#eab308" stopOpacity={0}/>
                          </linearGradient>
                        </defs>
                        <CartesianGrid strokeDasharray="3 3" stroke="#334155" vertical={false} />
@@ -463,12 +467,12 @@ const Results: React.FC<ResultsProps> = ({ answers, history, userProfile }) => {
                        <Area 
                          type="monotone" 
                          dataKey="score" 
-                         stroke="#10b981" 
+                         stroke="#eab308" 
                          fillOpacity={1} 
                          fill="url(#colorScore)" 
                          strokeWidth={3}
                          isAnimationActive={true}
-                         dot={{ r: 4, fill: "#10b981", strokeWidth: 2, stroke: "#fff" }}
+                         dot={{ r: 4, fill: "#eab308", strokeWidth: 2, stroke: "#fff" }}
                          activeDot={{ r: 6, stroke: "#fff", strokeWidth: 2 }}
                        />
                        <ReferenceLine y={70} stroke="#ef4444" strokeDasharray="3 3" strokeOpacity={0.5} label={{ value: 'Alerta', fill: '#ef4444', fontSize: 10, position: 'insideBottomRight' }} />
