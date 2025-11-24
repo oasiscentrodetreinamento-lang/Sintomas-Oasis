@@ -68,6 +68,46 @@ const App: React.FC = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  // New: Search for existing user and load their results directly
+  const handleSearchUser = (email: string): boolean => {
+    try {
+      const storedData = localStorage.getItem(STORAGE_KEY);
+      if (!storedData) return false;
+
+      const parsedData = JSON.parse(storedData);
+      if (!Array.isArray(parsedData)) return false;
+
+      const foundUser = parsedData.find((u: any) => u.email.toLowerCase().trim() === email.toLowerCase().trim());
+
+      if (foundUser) {
+        setUserProfile({
+          name: foundUser.name,
+          email: foundUser.email,
+          birthDate: foundUser.birthDate,
+          gender: foundUser.gender
+        });
+        
+        const history = foundUser.history || [];
+        setUserHistory(history);
+
+        // If they have history, load the LAST assessment as the current view
+        if (history.length > 0) {
+          const lastEntry = history[history.length - 1];
+          setCurrentAnswers(lastEntry.answers);
+        } else {
+          setCurrentAnswers([]);
+        }
+
+        setView('results');
+        return true;
+      }
+      return false;
+    } catch (e) {
+      console.error("Search error", e);
+      return false;
+    }
+  };
+
   const handleCancelRegistration = () => {
     setView('hero');
   };
@@ -113,7 +153,8 @@ const App: React.FC = () => {
       {view === 'registration' && (
         <Registration 
           onRegister={handleRegistration} 
-          onCancel={handleCancelRegistration} 
+          onCancel={handleCancelRegistration}
+          onSearch={handleSearchUser}
         />
       )}
       
