@@ -18,6 +18,18 @@ interface ResultsProps {
   userProfile: UserProfile;
 }
 
+// Safe date formatter to prevent crashes
+const formatDateSafe = (dateString: string): string => {
+  try {
+    if (!dateString) return 'N/A';
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return 'N/A';
+    return date.toLocaleDateString('pt-BR');
+  } catch (e) {
+    return 'N/A';
+  }
+};
+
 // Geometry helpers for SVG generation
 const polarToCartesian = (centerX: number, centerY: number, radius: number, angleInDegrees: number) => {
   const angleInRadians = (angleInDegrees - 90) * Math.PI / 180.0;
@@ -112,12 +124,14 @@ const Results: React.FC<ResultsProps> = ({ answers, history, userProfile }) => {
       }
     });
 
+    const percentage = maxGrandTotal > 0 ? Math.round((grandTotal / maxGrandTotal) * 100) : 0;
+
     return { 
       categoryData: cats, 
       totalStats: { 
         score: grandTotal, 
         max: maxGrandTotal, 
-        percentage: maxGrandTotal > 0 ? Math.round((grandTotal / maxGrandTotal) * 100) : 0 
+        percentage: isNaN(percentage) ? 0 : percentage
       } 
     };
   }, [answers]);
@@ -133,24 +147,37 @@ const Results: React.FC<ResultsProps> = ({ answers, history, userProfile }) => {
 
   // --- Evolution Data Processing ---
   const evolutionData = useMemo(() => {
+    if (!history || !Array.isArray(history)) return [];
+    
     return history.map(entry => {
-      const date = new Date(entry.date);
-      const month = date.toLocaleString('pt-BR', { month: 'short' }).replace('.', '');
-      return {
-        dateLabel: `${month}/${date.getFullYear().toString().slice(2)}`,
-        fullDate: date.toLocaleDateString('pt-BR'),
-        score: entry.percentage
-      };
+      try {
+        const date = new Date(entry.date);
+        const month = isNaN(date.getTime()) 
+          ? 'N/A' 
+          : date.toLocaleString('pt-BR', { month: 'short' }).replace('.', '');
+        
+        const year = isNaN(date.getTime())
+          ? ''
+          : date.getFullYear().toString().slice(2);
+
+        return {
+          dateLabel: `${month}/${year}`,
+          fullDate: isNaN(date.getTime()) ? 'Data Inválida' : date.toLocaleDateString('pt-BR'),
+          score: entry.percentage
+        };
+      } catch (e) {
+        return { dateLabel: '-', fullDate: '-', score: entry.percentage };
+      }
     });
   }, [history]);
 
-  // Chart Rendering Helpers (Moved inside render to access scope if needed, but keeping outside is fine)
+  // Chart Rendering Helpers
   const renderWheel = () => {
     const cx = 250;
     const cy = 250;
     const radius = 180;
     const innerHole = 40;
-    const numSectors = chartData.length;
+    const numSectors = chartData.length || 1; // Prevent division by zero
     const anglePerSector = 360 / numSectors;
     const gap = 2; // degrees gap
 
@@ -176,13 +203,8 @@ const Results: React.FC<ResultsProps> = ({ answers, history, userProfile }) => {
           const levels = 5;
           const barHeight = (radius - innerHole - 40) / levels; // Leave room for icon
           
-          // Determine color based on severity
-          let baseColor = "#22c55e"; // Green for low (standard)
-          // Since the user asked for gold theme, we could use gold for low, but chart semantics usually follow green=good.
-          // However, to match the "No Answer" = Gold, maybe we should use Gold for low?
-          // Let's stick to standard traffic light for chart data integrity unless requested, 
-          // BUT use the requested Gold theme for the "Good" score text.
-          
+          // Determine color based on severity (Low=Green, Med=Yellow, High=Red)
+          let baseColor = "#22c55e"; // Green
           if (item.percentage > 30) baseColor = "#eab308"; // Yellow
           if (item.percentage > 60) baseColor = "#ef4444"; // Red
           
@@ -276,19 +298,22 @@ const Results: React.FC<ResultsProps> = ({ answers, history, userProfile }) => {
     );
   }
 
+  // Safety check: If no user profile, don't crash, just show loading or empty
+  if (!userProfile) return null;
+
   return (
     <div className="min-h-screen bg-slate-950 text-slate-200 font-sans selection:bg-yellow-500/30 p-4 md:p-8 animate-fade-in">
       
       {/* Header Info */}
       <header className="flex flex-col md:flex-row justify-between items-start md:items-end mb-8 gap-4 px-2 border-b border-white/5 pb-6">
         <div>
-          <h1 className="text-3xl font-bold text-white tracking-tight">{userProfile.name}</h1>
+          <h1 className="text-3xl font-bold text-white tracking-tight">{userProfile.name || 'Usuário'}</h1>
           <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 mt-2 text-slate-400 text-sm">
-             <span className="flex items-center gap-1.5"><Calendar size={14} className="text-yellow-500"/> Nascimento: {new Date(userProfile.birthDate).toLocaleDateString('pt-BR')}</span>
+             <span className="flex items-center gap-1.5"><Calendar size={14} className="text-yellow-500"/> Nascimento: {formatDateSafe(userProfile.birthDate)}</span>
              <span className="hidden sm:inline w-1 h-1 bg-slate-700 rounded-full"/>
-             <span className="capitalize text-slate-300">{userProfile.gender}</span>
+             <span className="capitalize text-slate-300">{userProfile.gender || '-'}</span>
              <span className="hidden sm:inline w-1 h-1 bg-slate-700 rounded-full"/>
-             <span className="flex items-center gap-1.5"><History size={14} className="text-blue-500"/> Avaliações: {history.length}</span>
+             <span className="flex items-center gap-1.5"><History size={14} className="text-blue-500"/> Avaliações: {history ? history.length : 0}</span>
              <span className="hidden sm:inline w-1 h-1 bg-slate-700 rounded-full"/>
              <span className="text-slate-500">{userProfile.email}</span>
           </div>
@@ -342,10 +367,10 @@ const Results: React.FC<ResultsProps> = ({ answers, history, userProfile }) => {
                 </defs>
                 <path d="M 20 100 A 80 80 0 0 1 180 100" fill="none" stroke="#1e293b" strokeWidth="20" strokeLinecap="round" />
                 <path d="M 20 100 A 80 80 0 0 1 180 100" fill="none" stroke="url(#gaugeGradient)" strokeWidth="20" strokeLinecap="round" 
-                      strokeDasharray="251.2" strokeDashoffset={251.2 * (1 - totalStats.percentage / 100)} className="transition-all duration-1000 ease-out"/>
+                      strokeDasharray="251.2" strokeDashoffset={251.2 * (1 - (totalStats.percentage || 0) / 100)} className="transition-all duration-1000 ease-out"/>
                 
                 {/* Needle */}
-                <g transform={`rotate(${(totalStats.percentage / 100) * 180}, 100, 100)`} className="transition-all duration-1000 ease-out">
+                <g transform={`rotate(${((totalStats.percentage || 0) / 100) * 180}, 100, 100)`} className="transition-all duration-1000 ease-out">
                   <path d="M 100 100 L 20 100" stroke="white" strokeWidth="2" transform="rotate(0, 100, 100)" />
                   <circle cx="100" cy="100" r="4" fill="white" />
                 </g>

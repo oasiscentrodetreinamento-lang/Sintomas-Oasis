@@ -16,6 +16,8 @@ const Assessment: React.FC<AssessmentProps> = ({ onComplete }) => {
   const currentQuestion = QUESTIONS[currentQuestionIndex];
 
   const handleAnswer = (option: typeof ANSWER_OPTIONS[0]) => {
+    if (isTransitioning) return;
+    
     setIsTransitioning(true);
 
     const newAnswer: StoredAnswer = {
@@ -38,6 +40,8 @@ const Assessment: React.FC<AssessmentProps> = ({ onComplete }) => {
       }
     }, 300);
   };
+
+  if (!currentQuestion) return null;
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center p-4 relative">
@@ -62,13 +66,14 @@ const Assessment: React.FC<AssessmentProps> = ({ onComplete }) => {
               <button
                 key={option.value}
                 onClick={() => handleAnswer(option)}
+                disabled={isTransitioning}
                 className={`
                   group relative p-4 rounded-xl border border-white/5 transition-all duration-200
-                  hover:scale-[1.02] active:scale-[0.98]
+                  ${isTransitioning ? 'cursor-not-allowed opacity-80' : 'hover:scale-[1.02] active:scale-[0.98]'}
                   flex flex-col items-center justify-center gap-2
-                  ${option.value === AnswerValue.FREQUENTEMENTE ? 'hover:border-red-400/30' : ''}
-                  ${option.value === AnswerValue.OCASIONALMENTE ? 'hover:border-blue-400/30' : ''}
-                  ${option.value === AnswerValue.NAO ? 'hover:border-yellow-400/30' : ''}
+                  ${!isTransitioning && option.value === AnswerValue.FREQUENTEMENTE ? 'hover:border-red-400/30' : ''}
+                  ${!isTransitioning && option.value === AnswerValue.OCASIONALMENTE ? 'hover:border-blue-400/30' : ''}
+                  ${!isTransitioning && option.value === AnswerValue.NAO ? 'hover:border-yellow-400/30' : ''}
                   glass-panel bg-opacity-30 hover:bg-opacity-50
                 `}
               >

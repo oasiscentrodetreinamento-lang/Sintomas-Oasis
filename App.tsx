@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import Hero from './components/Hero';
 import Registration from './components/Registration';
@@ -133,12 +132,17 @@ const App: React.FC = () => {
       answers
     };
 
-    const updatedHistory = [...userHistory, newEntry];
-    setUserHistory(updatedHistory);
-    
-    if (userProfile) {
-      saveToStorage(userProfile, updatedHistory);
-    }
+    // Use functional update to ensure we have the latest history
+    setUserHistory(prevHistory => {
+      const updatedHistory = [...prevHistory, newEntry];
+      
+      // Save to storage immediately within logic flow to ensure consistency
+      if (userProfile) {
+        saveToStorage(userProfile, updatedHistory);
+      }
+      
+      return updatedHistory;
+    });
 
     setView('results');
     window.scrollTo({ top: 0, behavior: 'smooth' });
