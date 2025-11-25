@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo } from 'react';
 import { StoredAnswer, AnswerValue, HistoryEntry, UserProfile } from '../types';
 import { QUESTIONS } from '../constants';
@@ -5,7 +6,7 @@ import {
   Brain, Eye, Ear, Wind, MessageCircle, Smile, 
   Sparkles, Heart, Zap, Utensils, Dumbbell, 
   Activity, Shield, Flame, User, Send,
-  CheckCircle, Info, Calendar, History
+  CheckCircle, Info, Calendar, History, ClipboardList, LayoutGrid
 } from 'lucide-react';
 import { 
   AreaChart, Area, XAxis, YAxis, CartesianGrid, 
@@ -16,6 +17,8 @@ interface ResultsProps {
   answers: StoredAnswer[];
   history: HistoryEntry[];
   userProfile: UserProfile;
+  onStartPainMap: () => void;
+  onBackToMenu: () => void;
 }
 
 // Safe date formatter to prevent crashes
@@ -76,7 +79,7 @@ const CATEGORY_ICONS: Record<string, React.ElementType> = {
   'Metabolismo': Flame,
 };
 
-const Results: React.FC<ResultsProps> = ({ answers, history, userProfile }) => {
+const Results: React.FC<ResultsProps> = ({ answers, history, userProfile, onStartPainMap, onBackToMenu }) => {
   const [hoveredCategory, setHoveredCategory] = useState<string | null>(null);
   const [phone, setPhone] = useState('');
   const [formVisible, setFormVisible] = useState(false);
@@ -318,11 +321,27 @@ const Results: React.FC<ResultsProps> = ({ answers, history, userProfile }) => {
              <span className="text-slate-500">{userProfile.email}</span>
           </div>
         </div>
-        <div className="flex gap-4">
+        <div className="flex flex-wrap gap-4">
+           {/* Back to Menu */}
+           <button 
+             onClick={onBackToMenu}
+             className="bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white px-5 py-2 rounded-full font-medium transition-all flex items-center gap-2 text-sm"
+           >
+             <LayoutGrid size={16} /> Voltar ao Menu
+           </button>
+
+           {/* Pain Mapping Button */}
+           <button 
+             onClick={onStartPainMap}
+             className="bg-blue-600 hover:bg-blue-500 text-white px-5 py-2 rounded-full font-medium transition-all shadow-lg shadow-blue-900/20 flex items-center gap-2 text-sm"
+           >
+             <ClipboardList size={16} /> Mapear Dores
+           </button>
+
            {!formVisible && (
              <button 
                onClick={() => setFormVisible(true)}
-               className="bg-brand hover:bg-brand-dark text-white px-6 py-2 rounded-full font-medium transition-all shadow-lg shadow-yellow-900/20 flex items-center gap-2"
+               className="bg-brand hover:bg-brand-dark text-white px-5 py-2 rounded-full font-medium transition-all shadow-lg shadow-yellow-900/20 flex items-center gap-2 text-sm"
              >
                <Send size={16} /> Contatar Especialista
              </button>

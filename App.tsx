@@ -1,9 +1,14 @@
+
 import React, { useState } from 'react';
 import Hero from './components/Hero';
 import Registration from './components/Registration';
+import Selection from './components/Selection';
 import Assessment from './components/Assessment';
 import Results from './components/Results';
-import { ViewState, StoredAnswer, UserProfile, HistoryEntry } from './types';
+import PainAssessment from './components/PainAssessment';
+import PainResults from './components/PainResults';
+import HistoryList from './components/HistoryList';
+import { ViewState, StoredAnswer, UserProfile, HistoryEntry, PainMap, PainHistoryEntry } from './types';
 
 // Storage key constant
 const STORAGE_KEY = 'oasis_app_data_v1';
@@ -13,8 +18,10 @@ const App: React.FC = () => {
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [currentAnswers, setCurrentAnswers] = useState<StoredAnswer[]>([]);
   const [userHistory, setUserHistory] = useState<HistoryEntry[]>([]);
+  const [currentPainMap, setCurrentPainMap] = useState<PainMap>({});
+  const [painHistory, setPainHistory] = useState<PainHistoryEntry[]>([]);
 
-  const saveToStorage = (profile: UserProfile, history: HistoryEntry[]) => {
+  const saveToStorage = (profile: UserProfile, history: HistoryEntry[], pHistory?: PainHistoryEntry[]) => {
     try {
       const storedData = localStorage.getItem(STORAGE_KEY);
       let allUsers = storedData ? JSON.parse(storedData) : [];
@@ -22,10 +29,12 @@ const App: React.FC = () => {
 
       const userIndex = allUsers.findIndex((u: any) => u.email === profile.email);
 
+      const userData = { ...profile, history, painHistory: pHistory || [] };
+
       if (userIndex >= 0) {
-        allUsers[userIndex] = { ...allUsers[userIndex], ...profile, history };
+        allUsers[userIndex] = { ...allUsers[userIndex], ...userData };
       } else {
-        allUsers.push({ ...profile, history });
+        allUsers.push(userData);
       }
 
       localStorage.setItem(STORAGE_KEY, JSON.stringify(allUsers));
@@ -40,11 +49,11 @@ const App: React.FC = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  // 2. Register/Login -> Go to Assessment
+  // 2. Register/Login -> Go to Selection
   const handleRegistration = (profile: UserProfile) => {
     setUserProfile(profile);
     
-    // Load existing history
+    // Load existing history if any (in case they register with existing email)
     try {
       const storedData = localStorage.getItem(STORAGE_KEY);
       if (storedData) {
@@ -53,21 +62,25 @@ const App: React.FC = () => {
           ? parsedData.find((u: any) => u.email === profile.email) 
           : null;
 
-        if (existingUser && existingUser.history) {
-          setUserHistory(existingUser.history);
+        if (existingUser) {
+          setUserHistory(existingUser.history || []);
+          setPainHistory(existingUser.painHistory || []);
         } else {
           setUserHistory([]);
+          setPainHistory([]);
         }
       }
     } catch (e) {
       setUserHistory([]);
+      setPainHistory([]);
     }
 
-    setView('assessment');
+    // Go to Selection Screen instead of straight to assessment
+    setView('selection');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  // New: Search for existing user and load their results directly
+  // Search User -> Go to Selection
   const handleSearchUser = (email: string): boolean => {
     try {
       const storedData = localStorage.getItem(STORAGE_KEY);
@@ -86,18 +99,11 @@ const App: React.FC = () => {
           gender: foundUser.gender
         });
         
-        const history = foundUser.history || [];
-        setUserHistory(history);
+        setUserHistory(foundUser.history || []);
+        setPainHistory(foundUser.painHistory || []);
 
-        // If they have history, load the LAST assessment as the current view
-        if (history.length > 0) {
-          const lastEntry = history[history.length - 1];
-          setCurrentAnswers(lastEntry.answers);
-        } else {
-          setCurrentAnswers([]);
-        }
-
-        setView('results');
+        // Go to Selection Screen so trainer can choose what to do with this student
+        setView('selection');
         return true;
       }
       return false;
@@ -105,6 +111,67 @@ const App: React.FC = () => {
       console.error("Search error", e);
       return false;
     }
+  };
+
+  // Selection Handlers
+  const handleSelectCurrent = () => {
+    setView('assessment');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleSelectNew = () => {
+    // Start fresh
+    setCurrentPainMap({});
+    setView('pain-mapping');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  // NEW: History Handlers
+  const handleViewLastSymptomResult = () => {
+    if (userHistory.length > 0) {
+      const lastEntry = userHistory[userHistory.length - 1];
+      setCurrentAnswers(lastEntry.answers);
+      setView('results');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
+
+  const handleViewLastPainResult = () => {
+    if (painHistory.length > 0) {
+      const lastEntry = painHistory[painHistory.length - 1];
+      setCurrentPainMap(lastEntry.painMap);
+      setView('pain-results');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
+
+  const handleViewFullHistory = () => {
+    setView('history');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleSelectSymptomResult = (index: number) => {
+    if (userHistory[index]) {
+      setCurrentAnswers(userHistory[index].answers);
+      setView('results');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
+
+  const handleSelectPainResult = (index: number) => {
+    if (painHistory[index]) {
+      setCurrentPainMap(painHistory[index].painMap);
+      setView('pain-results');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
+
+  const handleBackToSelection = () => {
+    setView('selection');
+  };
+
+  const handleBackToRegistration = () => {
+    setView('registration');
   };
 
   const handleCancelRegistration = () => {
@@ -138,7 +205,7 @@ const App: React.FC = () => {
       
       // Save to storage immediately within logic flow to ensure consistency
       if (userProfile) {
-        saveToStorage(userProfile, updatedHistory);
+        saveToStorage(userProfile, updatedHistory, painHistory);
       }
       
       return updatedHistory;
@@ -146,6 +213,40 @@ const App: React.FC = () => {
 
     setView('results');
     window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleStartPainMapFromResults = () => {
+    setCurrentPainMap({}); // Reset map for new entry
+    setView('pain-mapping');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleSavePainMap = (data: PainMap) => {
+    setCurrentPainMap(data);
+    
+    // Calculate total score
+    const totalScore = Object.values(data).reduce((acc, curr) => acc + curr.level, 0);
+
+    const newEntry: PainHistoryEntry = {
+      date: new Date().toISOString(),
+      totalScore,
+      painMap: data
+    };
+
+    setPainHistory(prev => {
+      const updatedHistory = [...prev, newEntry];
+      if (userProfile) {
+         saveToStorage(userProfile, userHistory, updatedHistory);
+      }
+      return updatedHistory;
+    });
+
+    setView('pain-results');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleCancelPainMap = () => {
+    setView('selection');
   };
 
   return (
@@ -161,6 +262,20 @@ const App: React.FC = () => {
           onSearch={handleSearchUser}
         />
       )}
+
+      {view === 'selection' && userProfile && (
+        <Selection 
+          userProfile={userProfile}
+          onSelectCurrent={handleSelectCurrent}
+          onSelectNew={handleSelectNew}
+          onBack={handleBackToRegistration}
+          hasSymptomHistory={userHistory.length > 0}
+          hasPainHistory={painHistory.length > 0}
+          onViewLastSymptomResult={handleViewLastSymptomResult}
+          onViewLastPainResult={handleViewLastPainResult}
+          onViewFullHistory={handleViewFullHistory}
+        />
+      )}
       
       {view === 'assessment' && (
         <Assessment onComplete={handleAssessmentComplete} />
@@ -171,6 +286,36 @@ const App: React.FC = () => {
           answers={currentAnswers} 
           history={userHistory}
           userProfile={userProfile}
+          onStartPainMap={handleStartPainMapFromResults}
+          onBackToMenu={handleBackToSelection}
+        />
+      )}
+
+      {view === 'pain-mapping' && userProfile && (
+        <PainAssessment 
+          userProfile={userProfile}
+          onSave={handleSavePainMap}
+          onCancel={handleCancelPainMap}
+        />
+      )}
+
+      {view === 'pain-results' && userProfile && (
+        <PainResults 
+          currentMap={currentPainMap}
+          history={painHistory}
+          userProfile={userProfile}
+          onBack={() => setView('selection')}
+        />
+      )}
+
+      {view === 'history' && userProfile && (
+        <HistoryList
+          userProfile={userProfile}
+          symptomHistory={userHistory}
+          painHistory={painHistory}
+          onBack={handleBackToSelection}
+          onSelectSymptomResult={handleSelectSymptomResult}
+          onSelectPainResult={handleSelectPainResult}
         />
       )}
     </div>
